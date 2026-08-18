@@ -211,5 +211,5 @@ export async function getAuditLogs() {
 
 export async function getAppSettings() {
   const settings = await db.appSetting.findMany();
-  return Object.fromEntries(settings.map((s) => [s.key, s.value]));
+  return Object.fromEntries(settings.map((s) => [s.key, typeof s.value === "string" ? s.value : ""]));
 }
