@@ -19,7 +19,7 @@ export function billingFrequencyLabel(frequency: string): string {
   return billingFrequencyLabels[frequency] ?? frequency.toLowerCase();
 }
 
-export function formatPlanPrice(price: Plan["price"]): string {
+export function formatPlanPrice(price: Plan["price"] | number): string {
   // Prisma's Decimal serializes to a string; format with Indian digit
   // grouping (₹15,000 rather than ₹15000) without pulling in a currency
   // library for one call site.
