@@ -20,7 +20,7 @@ export default async function AdminPlansPage() {
         {plans.map((plan) => (
           <form
             key={plan.id}
-            action={updatePlan.bind(null, plan.id)}
+            action={async (formData: FormData) => { "use server"; await updatePlan(plan.id, formData); }}
             className="flex flex-col gap-3 rounded-xl2 border border-ink-100 bg-white p-6 shadow-card"
           >
             <div className="flex items-center justify-between">
@@ -69,7 +69,7 @@ export default async function AdminPlansPage() {
         ))}
       </div>
 
-      <form action={createPlan} className="flex flex-col gap-4 rounded-xl2 border border-dashed border-ink-200 bg-white p-6">
+      <form action={async (formData: FormData) => { "use server"; await createPlan(formData); }} className="flex flex-col gap-4 rounded-xl2 border border-dashed border-ink-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-ink-900">Create New Plan</h2>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <input name="code" placeholder="Plan Code (e.g. PLAN_5PC)" required className={inputClass} />

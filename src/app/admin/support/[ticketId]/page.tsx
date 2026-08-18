@@ -46,7 +46,7 @@ export default async function AdminTicketDetailPage({ params }: { params: { tick
         ))}
 
         {ticket.status !== "CLOSED" && (
-          <form action={adminReplyToTicket.bind(null, ticket.id)} className="flex flex-col gap-3 border-t border-ink-100 pt-4">
+          <form action={async (formData: FormData) => { "use server"; await adminReplyToTicket(ticket.id, formData); }} className="flex flex-col gap-3 border-t border-ink-100 pt-4">
             <textarea name="message" placeholder="Write a reply…" rows={4} required className={inputClass} />
             <div className="flex items-center gap-3">
               <select name="status" defaultValue="WAITING_FOR_CUSTOMER" className={`${inputClass} w-56`}>

@@ -33,7 +33,7 @@ export default async function AdminBannersPage() {
         {banners.length === 0 && <p className="text-sm text-ink-400">No banners yet.</p>}
       </div>
 
-      <form action={createBanner} className="mt-6 flex flex-col gap-4 rounded-xl2 border border-dashed border-ink-200 bg-white p-6">
+      <form action={async (formData: FormData) => { "use server"; await createBanner(formData); }} className="mt-6 flex flex-col gap-4 rounded-xl2 border border-dashed border-ink-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-ink-900">Create Banner</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input name="title" placeholder="Title" required className={inputClass} />

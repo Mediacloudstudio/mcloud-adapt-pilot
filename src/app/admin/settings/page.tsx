@@ -18,7 +18,7 @@ export default async function AdminSettingsPage() {
         description="MediaCloud Studio Pvt Ltd's own billing identity — used on every invoice generated for customers (PART 32)."
       />
 
-      <form action={updateAppSettings} className="flex max-w-2xl flex-col gap-4 rounded-xl2 border border-ink-100 bg-white p-6 shadow-card">
+      <form action={async (formData: FormData) => { "use server"; await updateAppSettings(formData); }} className="flex max-w-2xl flex-col gap-4 rounded-xl2 border border-ink-100 bg-white p-6 shadow-card">
         <label className="flex flex-col gap-1">
           <span className="text-xs text-ink-500">Legal Name</span>
           <input name="legalName" defaultValue={settings.legalName ?? ""} className={inputClass} />

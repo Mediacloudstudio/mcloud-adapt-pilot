@@ -65,7 +65,7 @@ export default async function AdminRefundsPage() {
           {refundablePayments.map((payment) => (
             <form
               key={payment.id}
-              action={createRefund.bind(null, payment.id)}
+              action={async (formData: FormData) => { "use server"; await createRefund(payment.id, formData); }}
               className="flex flex-col gap-2 rounded-lg border border-ink-100 p-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="text-sm">

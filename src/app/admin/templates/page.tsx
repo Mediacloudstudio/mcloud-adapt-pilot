@@ -34,7 +34,7 @@ export default async function AdminTemplatesPage() {
               )}
             </div>
 
-            <form action={assignTemplateToCompany.bind(null, template.id)} className="flex items-center gap-2">
+            <form action={async (formData: FormData) => { "use server"; await assignTemplateToCompany(template.id, formData); }} className="flex items-center gap-2">
               <select name="companyId" required className={`${inputClass} w-56`}>
                 <option value="">Assign to customer…</option>
                 {customers.map((customer) => (
@@ -51,7 +51,7 @@ export default async function AdminTemplatesPage() {
         ))}
       </div>
 
-      <form action={createTemplate} className="mt-6 flex flex-col gap-4 rounded-xl2 border border-dashed border-ink-200 bg-white p-6">
+      <form action={async (formData: FormData) => { "use server"; await createTemplate(formData); }} className="mt-6 flex flex-col gap-4 rounded-xl2 border border-dashed border-ink-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-ink-900">Add Template</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <input name="name" placeholder="Template Name" required className={inputClass} />

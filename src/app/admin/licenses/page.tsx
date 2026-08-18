@@ -33,7 +33,7 @@ export default async function AdminLicensesPage() {
 
               <div className="flex flex-wrap items-center gap-2">
                 <StatusChip status={license.status} />
-                <form action={setLicenseDeviceLimitOverride.bind(null, license.id)} className="flex items-center gap-1">
+                <form action={async (formData: FormData) => { "use server"; await setLicenseDeviceLimitOverride(license.id, formData); }} className="flex items-center gap-1">
                   <input
                     type="number"
                     name="deviceLimitOverride"

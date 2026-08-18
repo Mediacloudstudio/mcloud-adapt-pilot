@@ -55,7 +55,7 @@ export default async function AdminCustomerDetailPage({ params }: { params: { co
                 <div><dt className="text-xs text-ink-500">Razorpay Customer ID</dt><dd className="font-mono text-xs text-ink-600">{company.razorpayCustomer?.razorpayCustomerId ?? "—"}</dd></div>
               </dl>
 
-              <form action={changeCustomerPlan.bind(null, subscription.id)} className="flex items-end gap-2 border-t border-ink-100 pt-4">
+              <form action={async (formData: FormData) => { "use server"; await changeCustomerPlan(subscription.id, formData); }} className="flex items-end gap-2 border-t border-ink-100 pt-4">
                 <label className="flex flex-1 flex-col gap-1">
                   <span className="text-xs text-ink-500">Change Plan</span>
                   <select name="planId" defaultValue={subscription.planId} className={inputClass}>
@@ -69,7 +69,7 @@ export default async function AdminCustomerDetailPage({ params }: { params: { co
                 </button>
               </form>
 
-              <form action={extendSubscriptionAccess.bind(null, subscription.id)} className="flex items-end gap-2">
+              <form action={async (formData: FormData) => { "use server"; await extendSubscriptionAccess(subscription.id, formData); }} className="flex items-end gap-2">
                 <label className="flex flex-1 flex-col gap-1">
                   <span className="text-xs text-ink-500">Extend Access (days)</span>
                   <input type="number" name="days" min={1} defaultValue={30} className={inputClass} />

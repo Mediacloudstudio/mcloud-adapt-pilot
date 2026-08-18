@@ -50,7 +50,7 @@ export default async function AdminAppVersionsPage() {
         </table>
       </div>
 
-      <form action={publishAppVersion} className="mt-6 flex flex-col gap-4 rounded-xl2 border border-dashed border-ink-200 bg-white p-6">
+      <form action={async (formData: FormData) => { "use server"; await publishAppVersion(formData); }} className="mt-6 flex flex-col gap-4 rounded-xl2 border border-dashed border-ink-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-ink-900">Publish New Version</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <input name="version" placeholder="Version (e.g. 2.4.0)" required className={inputClass} />
