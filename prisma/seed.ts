@@ -355,11 +355,14 @@ async function main() {
   });
 
   for (const code of ["enable_template_generator", "enable_ratio_generator", "enable_batch_processing"]) {
-    await db.featureFlag.upsert({
-      where: { code_scope_companyId_planId: { code, scope: "GLOBAL", companyId: null, planId: null } },
-      update: {},
-      create: { code, scope: "GLOBAL", enabled: true },
+    const existingFlag = await db.featureFlag.findFirst({
+      where: { code, scope: "GLOBAL", companyId: null, planId: null },
     });
+    if (existingFlag) {
+      await db.featureFlag.update({ where: { id: existingFlag.id }, data: { enabled: true } });
+    } else {
+      await db.featureFlag.create({ data: { code, scope: "GLOBAL", enabled: true } });
+    }
   }
 
   console.log("Seeding default application settings...");
