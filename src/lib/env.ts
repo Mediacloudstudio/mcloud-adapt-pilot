@@ -41,7 +41,18 @@ const envSchema = z.object({
   STORAGE_REGION: z.string().optional(),
 });
 
-const parsed = envSchema.safeParse(process.env);
+// Vercel (and other dashboards) can end up storing an env var as a
+// present-but-empty string rather than omitting it entirely — e.g. a field
+// left blank in the "Environment Variables" UI. Zod's `.default()` and
+// `.optional()` only kick in for `undefined`, not `""`, so an empty string
+// would otherwise fail validation (or fail `.positive()`/`.url()` checks)
+// instead of falling back cleanly. Normalize empty strings to `undefined`
+// before validating so blank-but-present vars behave the same as unset ones.
+const rawEnv = Object.fromEntries(
+  Object.entries(process.env).map(([key, value]) => [key, value === "" ? undefined : value])
+);
+
+const parsed = envSchema.safeParse(rawEnv);
 
 if (!parsed.success) {
   console.error(
