@@ -46,8 +46,13 @@
     "tsx": "^4.19.1",
     "typescript": "^5.5.3"
   },
-  "engines": {
+    "engines": {
     "node": ">=18.18.0"
+  },
+  "overrides": {
+    "next-auth": {
+      "nodemailer": "$nodemailer"
+    }
   },
   "overrides": {
     "next-auth": {
