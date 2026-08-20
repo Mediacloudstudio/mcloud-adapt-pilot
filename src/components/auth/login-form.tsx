@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/auth/form-field";
 import { AuthShell, AuthLink } from "@/components/auth/auth-shell";
@@ -41,9 +41,8 @@ export function LoginForm() {
       redirect: false,
     });
 
-    setSubmitting(false);
-
     if (!result || result.error) {
+      setSubmitting(false);
       if (result?.error === "EMAIL_NOT_VERIFIED") {
         setFormError("Please verify your email address before logging in. Check your inbox for the verification link.");
       } else if (result?.error === "TOO_MANY_ATTEMPTS") {
@@ -54,7 +53,16 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/portal");
+    // Platform admins land in the admin backend; everyone else goes to
+    // their company portal. signIn() with redirect:false doesn't return
+    // the session directly, so fetch it once here to check the role --
+    // without this, admin accounts (which have no company) got sent to
+    // /portal, which immediately bounces them back to /login since
+    // getPortalContext() requires a companyId.
+    const session = await getSession();
+    setSubmitting(false);
+
+    router.push(session?.user?.isPlatformAdmin ? "/admin" : "/portal");
     router.refresh();
   }
 
