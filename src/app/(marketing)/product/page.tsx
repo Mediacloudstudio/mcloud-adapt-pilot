@@ -30,6 +30,8 @@ export default function ProductPage() {
             eyebrow="Product"
             title="A desktop application that works with Adobe InDesign to automate creative production"
             description="MCloud Adapt Pilot uses your predefined InDesign templates to generate multiple creative outputs — across dimensions, aspect ratios, locations, languages, text, images and customer data — with automated PDF output at the end of the line."
+            maxWidth="max-w-3xl"
+            titleClassName="text-3xl sm:text-3xl"
           />
           <div className="flex flex-col gap-3 sm:flex-row">
             <ButtonLink href="/register" size="lg">
