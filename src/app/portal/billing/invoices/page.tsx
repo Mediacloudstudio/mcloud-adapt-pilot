@@ -50,13 +50,14 @@ export default async function InvoicesPage() {
                     <StatusChip status={invoice.status} />
                   </td>
                   <td className="px-5 py-3">
-                    {invoice.pdfUrl ? (
-                      <a href={invoice.pdfUrl} className="font-semibold text-brand-700 hover:underline">
-                        Download
-                      </a>
-                    ) : (
-                      <span className="text-xs text-ink-400">PDF generation ships with Phase 6</span>
-                    )}
+                    <a
+                      href={`/api/v1/portal/invoices/${invoice.id}/pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-brand-700 hover:underline"
+                    >
+                      Download
+                    </a>
                   </td>
                 </tr>
               ))

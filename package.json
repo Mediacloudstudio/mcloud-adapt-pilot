@@ -25,6 +25,7 @@
     "next": "14.2.35",
     "next-auth": "^4.24.7",
     "nodemailer": "^9.0.5",
+    "pdfkit": "^0.15.2",
     "razorpay": "^2.9.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -35,6 +36,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.14.10",
     "@types/nodemailer": "^6.4.24",
+    "@types/pdfkit": "^0.17.6",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
@@ -46,13 +48,8 @@
     "tsx": "^4.19.1",
     "typescript": "^5.5.3"
   },
-    "engines": {
+  "engines": {
     "node": ">=18.18.0"
-  },
-  "overrides": {
-    "next-auth": {
-      "nodemailer": "$nodemailer"
-    }
   },
   "overrides": {
     "next-auth": {
