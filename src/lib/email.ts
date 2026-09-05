@@ -87,6 +87,33 @@ export async function sendPasswordResetEmail(to: string, firstName: string, rese
   });
 }
 
+// Sent exactly once, at the moment a license is first issued (PART 68
+// Phase 7) — the raw license key is never stored reversibly (see
+// src/lib/license-key.ts), so this email plus the one-time on-screen
+// reveal right after checkout are the ONLY two chances the customer ever
+// gets to see it. If both are missed, the only recovery is a MediaCloud
+// admin resetting/reissuing the license (there's no self-serve "resend my
+// key" — a stored hash can't be reversed back into the original key).
+export async function sendLicenseIssuedEmail(to: string, firstName: string, licenseKey: string, planName: string) {
+  await sendEmail({
+    to,
+    subject: "Your MCloud Adapt Pilot license key",
+    html: emailLayout(
+      "Your license is ready",
+      `
+        <p>Hi ${firstName},</p>
+        <p>Your ${planName} subscription is active. Here's your MCloud Adapt Pilot license key — enter it in the desktop app's
+        Licensing screen to activate this device:</p>
+        <p style="margin: 24px 0; padding: 16px; background: #f4f4fb; border-radius: 8px; font-family: monospace; font-size: 18px; font-weight: 700; letter-spacing: 0.05em; text-align: center; color: #1a1a22;">
+          ${licenseKey}
+        </p>
+        <p style="font-size: 13px; color: #565669;">Save this somewhere safe — for security we only ever show it this once and can't
+        display it again later. You can always see your masked key and manage devices from the Billing → License page in your portal.</p>
+      `
+    ),
+  });
+}
+
 export async function sendPasswordChangedEmail(to: string, firstName: string) {
   await sendEmail({
     to,

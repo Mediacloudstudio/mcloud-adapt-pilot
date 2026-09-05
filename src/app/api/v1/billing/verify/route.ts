@@ -17,6 +17,7 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { activatePaidSubscription } from "@/server/billing/activate";
+import { sendLicenseIssuedEmail } from "@/lib/email";
 
 const verifySchema = z.object({
   razorpay_order_id: z.string().min(1),
@@ -68,14 +69,29 @@ export async function POST(request: NextRequest) {
     data: { razorpayPaymentId: razorpay_payment_id, status: "PAID", paymentDate: new Date() },
   });
 
+  let rawLicenseKey: string | undefined;
   try {
-    await activatePaidSubscription({
+    const activation = await activatePaidSubscription({
       subscriptionId: payment.subscriptionId,
       paymentId: payment.id,
       // Payment.amount is stored in rupees (Decimal(12,2)) — only the
       // Razorpay order itself is in paise (see rupeesToPaise in orders.ts).
       amountPaid: Number(payment.amount),
     });
+    rawLicenseKey = activation.rawLicenseKey;
+
+    // Only set on first issuance (see activate.ts) — a renewal/plan
+    // change re-points the existing license without a new key. The raw
+    // key can never be recovered once this response is sent and this
+    // email attempt is made, so both are treated as best-effort: a
+    // failure here must not undo an already-successful payment.
+    if (rawLicenseKey) {
+      try {
+        await sendLicenseIssuedEmail(session.user.email, session.user.firstName, rawLicenseKey, activation.planName);
+      } catch (emailError) {
+        console.error("License-issued email failed to send (payment still succeeded):", emailError);
+      }
+    }
   } catch (error) {
     console.error("Subscription activation failed after verified payment:", error);
     return NextResponse.json(
@@ -84,5 +100,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ message: "Payment confirmed. Your subscription is now active.", subscriptionId: payment.subscriptionId });
+  return NextResponse.json({
+    message: "Payment confirmed. Your subscription is now active.",
+    subscriptionId: payment.subscriptionId,
+    // Present only the one time a license is newly issued — see
+    // sendLicenseIssuedEmail's comment for why there's no way to fetch
+    // this again later.
+    licenseKey: rawLicenseKey,
+  });
 }

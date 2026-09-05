@@ -56,6 +56,29 @@ export function CheckoutButton({
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  // Held only in component state (never the URL, never localStorage) —
+  // the server can only ever hand this back once, at the moment a
+  // license is newly issued (see /api/v1/billing/verify), so this is
+  // the customer's one shot to see/copy it before we navigate away.
+  const [revealedLicenseKey, setRevealedLicenseKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function continueToSubscription() {
+    setRevealedLicenseKey(null);
+    router.push("/portal/subscription?paid=1");
+    router.refresh();
+  }
+
+  async function copyLicenseKey() {
+    if (!revealedLicenseKey) return;
+    try {
+      await navigator.clipboard.writeText(revealedLicenseKey);
+      setCopied(true);
+    } catch {
+      // Clipboard API can be unavailable (e.g. insecure context) — the key
+      // is still fully visible and selectable on screen either way.
+    }
+  }
 
   async function startCheckout() {
     setStatus("loading");
@@ -97,8 +120,17 @@ export function CheckoutButton({
             if (!verifyResponse.ok) {
               throw new Error(verifyResult.message || "Payment verification failed.");
             }
-            router.push("/portal/subscription?paid=1");
-            router.refresh();
+            setStatus("idle");
+            if (verifyResult.licenseKey) {
+              // First-time issuance — show the one-time reveal instead of
+              // navigating away immediately. We also emailed it, but not
+              // everyone checks email right away, so this is the more
+              // reliable first touch.
+              setRevealedLicenseKey(verifyResult.licenseKey);
+            } else {
+              router.push("/portal/subscription?paid=1");
+              router.refresh();
+            }
           } catch (verifyError) {
             setStatus("error");
             setError(verifyError instanceof Error ? verifyError.message : "Payment verification failed.");
@@ -115,6 +147,31 @@ export function CheckoutButton({
       setStatus("error");
       setError(err instanceof Error ? err.message : "Something went wrong starting checkout.");
     }
+  }
+
+  if (revealedLicenseKey) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="w-full max-w-md rounded-xl2 bg-white p-6 shadow-card">
+          <h2 className="text-lg font-semibold text-ink-900">Your license key is ready</h2>
+          <p className="mt-2 text-sm text-ink-600">
+            We've also emailed this to you, but for security we can only show it here once — copy it now and paste it into the
+            MCloud Adapt Pilot desktop app's Licensing screen to activate this device.
+          </p>
+          <p className="mt-4 select-all rounded-lg bg-ink-50 p-4 text-center font-mono text-lg font-bold tracking-wide text-ink-900">
+            {revealedLicenseKey}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button variant="primary" size="md" onClick={copyLicenseKey}>
+              {copied ? "Copied!" : "Copy License Key"}
+            </Button>
+            <Button variant="outline" size="md" onClick={continueToSubscription}>
+              Continue
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -17,6 +17,7 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { activatePaidSubscription } from "@/server/billing/activate";
 import { recordAuditLog } from "@/server/audit/log";
+import { sendLicenseIssuedEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
@@ -126,11 +127,36 @@ async function handlePaymentCaptured(entity: RazorpayPaymentEntity | undefined) 
     data: { razorpayPaymentId: entity.id, status: "PAID", paymentDate: new Date() },
   });
 
-  await activatePaidSubscription({
+  const activation = await activatePaidSubscription({
     subscriptionId: payment.subscriptionId,
     paymentId: payment.id,
     amountPaid: Number(payment.amount),
   });
+
+  // Durable delivery path for the license key: /billing/verify already
+  // tries to email it too, but that's the customer's browser tab, which
+  // may have closed before it got a response. This webhook is the one
+  // guaranteed-to-run path, so it's the backstop that ensures the
+  // one-and-only copy of the key doesn't get lost if the browser flow
+  // didn't complete. A race where both fire is possible but harmless —
+  // rawLicenseKey is only ever set on first issuance either way, so at
+  // worst the customer gets the same real key twice, never a wrong one.
+  if (activation.rawLicenseKey) {
+    const recipient = await db.companyUser.findFirst({
+      where: { companyId: payment.companyId, role: { code: "COMPANY_ADMIN" } },
+      orderBy: { createdAt: "asc" },
+      include: { user: true },
+    });
+    if (recipient) {
+      try {
+        await sendLicenseIssuedEmail(recipient.user.email, recipient.user.firstName, activation.rawLicenseKey, activation.planName);
+      } catch (emailError) {
+        console.error(`License-issued email failed to send for payment ${payment.id}:`, emailError);
+      }
+    } else {
+      console.error(`No COMPANY_ADMIN found for company ${payment.companyId} to email the new license key to.`);
+    }
+  }
 }
 
 async function handlePaymentFailed(entity: RazorpayPaymentEntity | undefined) {

@@ -52,6 +52,13 @@ export async function activatePaidSubscription(params: {
     // customer.
     let license = await tx.license.findFirst({ where: { companyId: subscription.companyId } });
 
+    // Only set when a license is issued for the FIRST time — the raw key
+    // exists only in memory for this one request (see license-key.ts:
+    // "the raw key is only ever returned once, at issuance"). A renewal
+    // or plan change re-points the existing license and intentionally
+    // does NOT regenerate/reveal a key, so this stays undefined for those.
+    let rawLicenseKey: string | undefined;
+
     if (!license) {
       // licenseKeyHash/displayKey collisions are cryptographically
       // negligible (32^16 keyspace) — not worth a transaction-unsafe
@@ -59,7 +66,8 @@ export async function activatePaidSubscription(params: {
       // unique-constraint error, so a retry would need a savepoint to
       // actually work). If it ever happens, the transaction fails
       // cleanly and the payment can be re-processed.
-      const { displayKey, keyHash } = generateLicenseKey();
+      const { rawKey, displayKey, keyHash } = generateLicenseKey();
+      rawLicenseKey = rawKey;
       license = await tx.license.create({
         data: {
           companyId: subscription.companyId,
@@ -89,7 +97,7 @@ export async function activatePaidSubscription(params: {
       billingPeriodEnd: nextBillingDate,
     });
 
-    return { license, invoice };
+    return { license, invoice, rawLicenseKey };
   });
 
   await recordAuditLog({
@@ -100,5 +108,9 @@ export async function activatePaidSubscription(params: {
     newValue: { status: "ACTIVE", nextBillingDate, planId: subscription.planId },
   });
 
-  return result;
+  // subscription.plan was already loaded above for BILLING_PERIOD_DAYS —
+  // handed back here too so callers that only have a subscriptionId
+  // (e.g. the license-issued email) don't need a second query just for
+  // the plan's display name.
+  return { ...result, planName: subscription.plan.name };
 }
