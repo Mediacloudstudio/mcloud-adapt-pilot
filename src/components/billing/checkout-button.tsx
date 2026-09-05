@@ -155,8 +155,8 @@ export function CheckoutButton({
         <div className="w-full max-w-md rounded-xl2 bg-white p-6 shadow-card">
           <h2 className="text-lg font-semibold text-ink-900">Your license key is ready</h2>
           <p className="mt-2 text-sm text-ink-600">
-            We've also emailed this to you, but for security we can only show it here once — copy it now and paste it into the
-            MCloud Adapt Pilot desktop app's Licensing screen to activate this device.
+            We&rsquo;ve also emailed this to you, but for security we can only show it here once — copy it now and paste it into the
+            MCloud Adapt Pilot desktop app&rsquo;s Licensing screen to activate this device.
           </p>
           <p className="mt-4 select-all rounded-lg bg-ink-50 p-4 text-center font-mono text-lg font-bold tracking-wide text-ink-900">
             {revealedLicenseKey}
