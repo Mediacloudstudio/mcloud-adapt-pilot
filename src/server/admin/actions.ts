@@ -15,7 +15,7 @@ import { getAdminContext } from "@/server/admin/context";
 import { recordAuditLog } from "@/server/audit/log";
 import { getRazorpayClient, isRazorpayConfigured, rupeesToPaise } from "@/lib/razorpay";
 
-type ActionResult = { success: boolean; message: string };
+export type ActionResult = { success: boolean; message: string };
 
 // ───────────────────────────── Customers ─────────────────────────────────
 
@@ -350,27 +350,71 @@ export async function publishAppVersion(formData: FormData): Promise<ActionResul
 }
 
 const bannerSchema = z.object({
-  title: z.string().min(1),
+  title: z.string().min(1, "Title is required."),
   subtitle: z.string().optional(),
-  linkUrl: z.string().optional(),
+  // .url() requires a full "https://..." link - a bare domain or a
+  // pasted value with stray leading/trailing whitespace (a common
+  // copy-paste artifact) would otherwise fail validation with zero
+  // feedback, which is exactly what made an earlier version of this
+  // form look like it silently "didn't save" the image at all.
+  imageUrl: z.string().trim().url("Image URL must be a full link starting with https://").optional(),
+  linkUrl: z.string().trim().url("Link URL must be a full link starting with https://").optional(),
+  // Plain <input type="date"> values ("YYYY-MM-DD") - coerced straight
+  // to Date so a banner can be scheduled for a future/limited window,
+  // matching what /api/v1/app/config already filters on.
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
   status: z.enum(["ACTIVE", "INACTIVE"]),
 });
 
-export async function createBanner(formData: FormData): Promise<ActionResult> {
+export async function createBanner(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
   const { userId } = await getAdminContext();
   const parsed = bannerSchema.safeParse({
     title: formData.get("title"),
     subtitle: formData.get("subtitle") || undefined,
+    imageUrl: formData.get("imageUrl") || undefined,
     linkUrl: formData.get("linkUrl") || undefined,
+    startDate: formData.get("startDate") || undefined,
+    endDate: formData.get("endDate") || undefined,
     status: formData.get("status"),
   });
-  if (!parsed.success) return { success: false, message: "Please check the form and try again." };
+  if (!parsed.success) {
+    // Surface the actual reason (e.g. "Image URL must be a full link
+    // starting with https://") instead of a generic message - this
+    // form previously discarded its result entirely, so a validation
+    // failure looked exactly like nothing had happened.
+    const firstIssue = parsed.error.issues[0]?.message ?? "Please check the form and try again.";
+    return { success: false, message: firstIssue };
+  }
 
   const banner = await db.banner.create({ data: parsed.data });
   await recordAuditLog({ userId, action: "BANNER_CREATED", entity: "Banner", entityId: banner.id, newValue: parsed.data });
 
   revalidatePath("/admin/application/banners");
   return { success: true, message: "Banner created." };
+}
+
+export async function setBannerStatus(bannerId: string, status: "ACTIVE" | "INACTIVE"): Promise<ActionResult> {
+  const { userId } = await getAdminContext();
+  const banner = await db.banner.update({ where: { id: bannerId }, data: { status } });
+  await recordAuditLog({
+    userId,
+    action: status === "ACTIVE" ? "BANNER_ACTIVATED" : "BANNER_DEACTIVATED",
+    entity: "Banner",
+    entityId: banner.id,
+  });
+
+  revalidatePath("/admin/application/banners");
+  return { success: true, message: `Banner ${status === "ACTIVE" ? "activated" : "deactivated"}.` };
+}
+
+export async function deleteBanner(bannerId: string): Promise<ActionResult> {
+  const { userId } = await getAdminContext();
+  await db.banner.delete({ where: { id: bannerId } });
+  await recordAuditLog({ userId, action: "BANNER_DELETED", entity: "Banner", entityId: bannerId });
+
+  revalidatePath("/admin/application/banners");
+  return { success: true, message: "Banner deleted." };
 }
 
 export async function toggleFeatureFlag(flagId: string, enabled: boolean): Promise<ActionResult> {
