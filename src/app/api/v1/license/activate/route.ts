@@ -114,7 +114,12 @@ export async function POST(request: NextRequest) {
 }
 
 function buildActivationResponse(
-  license: { displayKey: string; validUntil: Date | null; subscription: { status: string; plan: { name: string; deviceLimit: number } } | null; company: { companyName: string } },
+  license: {
+    displayKey: string;
+    validUntil: Date | null;
+    subscription: { status: string; nextBillingDate: Date | null; cancelAtPeriodEnd: boolean; plan: { name: string; deviceLimit: number } } | null;
+    company: { companyName: string };
+  },
   deviceToken: string,
   tokenExpiresAt: Date,
   message: string
@@ -127,6 +132,12 @@ function buildActivationResponse(
     license: { displayKey: license.displayKey, validUntil: license.validUntil },
     plan: license.subscription ? { name: license.subscription.plan.name, deviceLimit: license.subscription.plan.deviceLimit } : null,
     subscriptionStatus: license.subscription?.status ?? null,
+    // See the matching comment in /api/v1/license/validate - this is
+    // the actual renewal date source; License.validUntil above is
+    // never populated anywhere in this codebase.
+    subscription: license.subscription
+      ? { status: license.subscription.status, nextBillingDate: license.subscription.nextBillingDate, cancelAtPeriodEnd: license.subscription.cancelAtPeriodEnd }
+      : null,
     company: { name: license.company.companyName },
   };
 }

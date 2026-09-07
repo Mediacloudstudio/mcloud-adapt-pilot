@@ -66,6 +66,14 @@ export async function POST(request: NextRequest) {
     subscriptionStatus,
     license: { displayKey: license.displayKey, validUntil: license.validUntil },
     plan: license.subscription ? { name: license.subscription.plan.name, deviceLimit: license.subscription.plan.deviceLimit } : null,
+    // The desktop app's "Next Renewal"/"Days Remaining" display needs
+    // this - License.validUntil above is never actually populated
+    // anywhere in this codebase (renewal is tracked purely on the
+    // Subscription record), so that field alone was always going to
+    // show as blank on the client.
+    subscription: license.subscription
+      ? { status: subscriptionStatus, nextBillingDate: license.subscription.nextBillingDate, cancelAtPeriodEnd: license.subscription.cancelAtPeriodEnd }
+      : null,
     deviceLimit,
     activeDeviceCount,
   });
