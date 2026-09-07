@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   const planId = license.subscription?.planId ?? null;
   const now = new Date();
 
-  const [featureFlags, banners] = await Promise.all([
+  const [featureFlags, banners, homeImageSetting] = await Promise.all([
     resolveFeatureFlags(license.companyId, planId),
     db.banner.findMany({
       where: {
@@ -49,11 +49,28 @@ export async function POST(request: NextRequest) {
       },
       orderBy: { createdAt: "desc" },
     }),
+    // Admin -> Application -> Home Screen: lets the desktop app's
+    // Home page picture be swapped without a new app release, the
+    // same idea as banners. Stored as a plain AppSetting row (see
+    // setDesktopHomeImage in server/admin/actions.ts) rather than its
+    // own table, since it's a single global value.
+    db.appSetting.findUnique({ where: { key: "desktopHomeImageUrl" } }),
   ]);
+
+  // Precedence: an explicit Home Screen override (Admin -> Application
+  // -> Home Screen) wins if set; otherwise default to whatever image
+  // the currently active banner is using, so "the banner I already set
+  // up" is enough on its own without also configuring a separate Home
+  // Screen image - Admin -> Application -> Home Screen only needs to
+  // be touched at all when a customer wants the Home page picture to
+  // differ from the banner's.
+  const explicitHomeImageUrl = typeof homeImageSetting?.value === "string" && homeImageSetting.value ? homeImageSetting.value : null;
+  const homeImageUrl = explicitHomeImageUrl ?? banners[0]?.imageUrl ?? null;
 
   return NextResponse.json({
     status: "OK",
     featureFlags,
     banners: banners.map((b) => ({ id: b.id, title: b.title, subtitle: b.subtitle, imageUrl: b.imageUrl, linkUrl: b.linkUrl })),
+    homeImageUrl,
   });
 }

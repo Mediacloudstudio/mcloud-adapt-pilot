@@ -350,7 +350,10 @@ export async function publishAppVersion(formData: FormData): Promise<ActionResul
 }
 
 const bannerSchema = z.object({
-  title: z.string().min(1, "Title is required."),
+  // Optional - an image-only banner (no headline text) is a valid use
+  // case, e.g. a pure promo graphic. Stored as an empty string rather
+  // than null since Banner.title in the schema is a required column.
+  title: z.string().optional(),
   subtitle: z.string().optional(),
   // .url() requires a full "https://..." link - a bare domain or a
   // pasted value with stray leading/trailing whitespace (a common
@@ -370,7 +373,7 @@ const bannerSchema = z.object({
 export async function createBanner(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
   const { userId } = await getAdminContext();
   const parsed = bannerSchema.safeParse({
-    title: formData.get("title"),
+    title: formData.get("title") || undefined,
     subtitle: formData.get("subtitle") || undefined,
     imageUrl: formData.get("imageUrl") || undefined,
     linkUrl: formData.get("linkUrl") || undefined,
@@ -387,7 +390,7 @@ export async function createBanner(_prevState: ActionResult, formData: FormData)
     return { success: false, message: firstIssue };
   }
 
-  const banner = await db.banner.create({ data: parsed.data });
+  const banner = await db.banner.create({ data: { ...parsed.data, title: parsed.data.title ?? "" } });
   await recordAuditLog({ userId, action: "BANNER_CREATED", entity: "Banner", entityId: banner.id, newValue: parsed.data });
 
   revalidatePath("/admin/application/banners");
@@ -537,4 +540,46 @@ export async function updateAppSettings(formData: FormData): Promise<ActionResul
 
   revalidatePath("/admin/settings");
   return { success: true, message: "Settings saved." };
+}
+
+// ────────────────────── Desktop app: Home Screen image ────────────────────
+// Lets the desktop app's Home page picture be swapped centrally, same idea
+// as Banners - stored as a single AppSetting row and read by every device
+// via /api/v1/app/config (PART "Home Screen Image").
+
+const homeImageSchema = z.object({
+  desktopHomeImageUrl: z.string().trim().url("Must be a full link starting with https://").optional(),
+});
+
+export async function setDesktopHomeImage(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
+  const { userId } = await getAdminContext();
+  const parsed = homeImageSchema.safeParse({
+    desktopHomeImageUrl: formData.get("desktopHomeImageUrl") || undefined,
+  });
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0]?.message ?? "Please check the form and try again.";
+    return { success: false, message: firstIssue };
+  }
+
+  // An empty value is a deliberate "clear" - the desktop app falls
+  // back to its own bundled default image whenever this is blank.
+  const value = parsed.data.desktopHomeImageUrl ?? "";
+  await db.appSetting.upsert({
+    where: { key: "desktopHomeImageUrl" },
+    update: { value },
+    create: { key: "desktopHomeImageUrl", value },
+  });
+  await recordAuditLog({
+    userId,
+    action: "SETTINGS_UPDATED",
+    entity: "AppSetting",
+    entityId: "desktopHomeImageUrl",
+    newValue: { desktopHomeImageUrl: value },
+  });
+
+  revalidatePath("/admin/application/home-image");
+  return {
+    success: true,
+    message: value ? "Home screen image updated." : "Home screen image cleared - devices will use the app's built-in default image.",
+  };
 }

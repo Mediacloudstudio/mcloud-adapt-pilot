@@ -12,6 +12,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { label: "Versions", href: "/admin/application/versions" },
   { label: "Banners", href: "/admin/application/banners" },
+  { label: "Home Screen", href: "/admin/application/home-image" },
   { label: "Feature Flags", href: "/admin/application/feature-flags" },
 ];
 
