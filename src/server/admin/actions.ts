@@ -10,6 +10,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getAdminContext } from "@/server/admin/context";
 import { recordAuditLog } from "@/server/audit/log";
@@ -328,7 +329,7 @@ const publishVersionSchema = z.object({
   mandatory: z.coerce.boolean().optional(),
 });
 
-export async function publishAppVersion(formData: FormData): Promise<ActionResult> {
+export async function publishAppVersion(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
   const { userId } = await getAdminContext();
   const parsed = publishVersionSchema.safeParse({
     version: formData.get("version"),
@@ -337,11 +338,32 @@ export async function publishAppVersion(formData: FormData): Promise<ActionResul
     releaseNotes: formData.get("releaseNotes") || undefined,
     mandatory: formData.get("mandatory") === "on",
   });
-  if (!parsed.success) return { success: false, message: "Please check the form and try again." };
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0]?.message ?? "Please check the form and try again.";
+    return { success: false, message: firstIssue };
+  }
 
-  const version = await db.appVersion.create({
-    data: { ...parsed.data, mandatory: parsed.data.mandatory ?? false, platform: "WINDOWS" },
-  });
+  // A version number has to be unique (Admin -> Application -> Versions
+  // lists every past release, and the desktop app's update-check looks
+  // one row up by exact version string) - re-publishing a version number
+  // that's already in the table hits AppVersion.version's unique
+  // constraint. Previously this just threw, which Next.js turned into a
+  // raw "Application error: a server-side exception has occurred" page
+  // with zero explanation - the same silent-failure shape as the banner
+  // form bug, just for a different constraint. Catching it here means a
+  // duplicate version number is at least a clear, actionable message
+  // instead of a crash.
+  let version;
+  try {
+    version = await db.appVersion.create({
+      data: { ...parsed.data, mandatory: parsed.data.mandatory ?? false, platform: "WINDOWS" },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { success: false, message: `Version ${parsed.data.version} has already been published. Use a different version number, or check the table above for the existing entry.` };
+    }
+    throw error;
+  }
   await recordAuditLog({ userId, action: "APP_VERSION_PUBLISHED", entity: "AppVersion", entityId: version.id, newValue: parsed.data });
 
   revalidatePath("/admin/application/versions");

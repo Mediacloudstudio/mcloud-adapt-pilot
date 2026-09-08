@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui/page-header";
 import { getAppVersions } from "@/server/admin/queries";
-import { publishAppVersion } from "@/server/admin/actions";
+import { PublishVersionForm } from "./publish-version-form";
 
 export const metadata: Metadata = { title: "Application Versions" };
 export const dynamic = "force-dynamic";
-
-const inputClass = "w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500";
 
 export default async function AdminAppVersionsPage() {
   const versions = await getAppVersions();
@@ -50,22 +48,7 @@ export default async function AdminAppVersionsPage() {
         </table>
       </div>
 
-      <form action={async (formData: FormData) => { "use server"; await publishAppVersion(formData); }} className="mt-6 flex flex-col gap-4 rounded-xl2 border border-dashed border-ink-200 bg-white p-6">
-        <h2 className="text-sm font-semibold text-ink-900">Publish New Version</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <input name="version" placeholder="Version (e.g. 2.4.0)" required className={inputClass} />
-          <input name="minimumSupportedVersion" placeholder="Minimum Supported (e.g. 2.0.0)" required className={inputClass} />
-          <input name="installerUrl" type="url" placeholder="Installer URL" required className={inputClass} />
-        </div>
-        <textarea name="releaseNotes" placeholder="Release notes (optional)" rows={3} className={inputClass} />
-        <label className="flex items-center gap-2 text-sm text-ink-600">
-          <input type="checkbox" name="mandatory" />
-          Mandatory update — block older clients until they update
-        </label>
-        <button type="submit" className="w-fit rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
-          Publish Version
-        </button>
-      </form>
+      <PublishVersionForm />
     </>
   );
 }
