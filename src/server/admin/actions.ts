@@ -321,9 +321,19 @@ export async function assignTemplateToCompany(templateId: string, formData: Form
 
 // ───────────────────────────── Application ───────────────────────────────
 
+// The desktop app's /api/v1/app/version comparator does plain numeric
+// dot-segment parsing (parseInt each part) - a value like "V1.1.0" or
+// "Windows" doesn't throw, it just silently parses as 0 and corrupts the
+// "is there a newer version" comparison, so this has to be caught here
+// with a strict format rather than left as z.string().min(1).
+const versionNumberSchema = z
+  .string()
+  .trim()
+  .regex(/^\d+\.\d+\.\d+$/, "Enter a plain version number like 1.1.0 - digits and dots only, no letters or other text.");
+
 const publishVersionSchema = z.object({
-  version: z.string().min(1),
-  minimumSupportedVersion: z.string().min(1),
+  version: versionNumberSchema,
+  minimumSupportedVersion: versionNumberSchema,
   installerUrl: z.string().url(),
   releaseNotes: z.string().optional(),
   mandatory: z.coerce.boolean().optional(),
